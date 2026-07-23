@@ -1,0 +1,23 @@
+Fix SIGSEGV in evdi_open_attached_to() when called with a NULL parent device.
+
+The SMIUSBDisplayManager daemon calls the deprecated evdi_open_attached_to(NULL)
+to obtain a generic EVDI device. In libevdi 1.15 this wrapper passes the pointer
+straight into strlen() before evdi_open_attached_to_fixed() gets a chance to
+handle the NULL case (which it does, via get_generic_device()). strlen(NULL)
+dereferences address 0 and crashes the daemon in its pnpThreadfunc thread every
+time a monitor is plugged in.
+
+Guard the NULL so length becomes 0 and _fixed() takes its NULL path.
+
+--- a/library/evdi_lib.c
++++ b/library/evdi_lib.c
+@@ -639,7 +639,8 @@
+ // deprecated, use evdi_open_attached_to_fixed
+ evdi_handle evdi_open_attached_to(const char *sysfs_parent_device)
+ {
+-	return evdi_open_attached_to_fixed(sysfs_parent_device, strlen(sysfs_parent_device));
++	return evdi_open_attached_to_fixed(sysfs_parent_device,
++		sysfs_parent_device ? strlen(sysfs_parent_device) : 0);
+ }
+
+ evdi_handle evdi_open_attached_to_fixed(const char *sysfs_parent_device, size_t length)
