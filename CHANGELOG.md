@@ -3,6 +3,25 @@
 All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.1.0] - 2026-07-23
+
+### Added
+- `scripts/prepare-vendor-driver.sh` — Step 0 helper that repacks the vendor
+  `evdi.tar.gz` with EVDI 1.15.0 so the official Silicon Motion installer builds
+  on kernel 6.8+. Supports `--run`/`--dir` inputs, `--evdi-src`, an `--evdi-tag`
+  override, and `--dry-run`; never runs the vendor installer.
+- `third_party/evdi-1.15.0.tar.gz` — bundled EVDI 1.15.0 source so Step 0 runs
+  fully offline by default, with no download.
+- README (EN + PT-BR): a "Step 0 — make the official driver install at all"
+  section, a Secure Boot / MOK note (no key enrollment needed), and matching
+  Symptoms, Root cause, How it works, and Troubleshooting entries.
+
+### Fixed
+- Official installer aborting on kernel 6.8+ (`Failed to install evdi`,
+  `bad exit status: 2`): the bundled EVDI 1.14.7 does not compile against the
+  current kernel DRM API; replacing it with EVDI 1.15.0 lets the vendor build,
+  MOK-sign, and install succeed.
+
 ## [1.0.0] - 2026-07-22
 
 ### Added
