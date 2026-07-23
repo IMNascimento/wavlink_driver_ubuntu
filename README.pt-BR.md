@@ -37,7 +37,7 @@ instalar.
    **6.8+** (a API interna de DRM do kernel mudou), então falha com
    `bad exit status: 2`, o instalador se reverte e nada é instalado. Corrigido
    trocando o EVDI embutido pela versão **1.15.0** (jul/2026), que compila nos
-   kernels atuais — veja o [Passo 0](#passo-0--fazer-o-driver-oficial-instalar).
+   kernels atuais; veja o [Passo 0](#passo-0-fazer-o-driver-oficial-instalar).
 
 1. **Crash do daemon ao plugar (`SIGSEGV`).** Ao plugar o monitor, o
    `SMIUSBDisplayManager` chama a função *deprecada* `evdi_open_attached_to(NULL)`
@@ -62,7 +62,7 @@ demanda ao plugar a tela, já com o display manager no ar.
 - Ubuntu 24.04 (também deve funcionar em 23.04 / 22.04 / 20.04).
 - O **driver oficial da Silicon Motion instalado** em `/opt/siliconmotion` (este
   repositório corrige o driver, não o substitui). No kernel **6.8+** o instalador
-  do fabricante não conclui sozinho — faça o [Passo 0](#passo-0--fazer-o-driver-oficial-instalar)
+  do fabricante não conclui sozinho, então faça o [Passo 0](#passo-0-fazer-o-driver-oficial-instalar)
   antes. Baixe o driver no centro de downloads da WAVLINK e escolha o seu modelo
   com chip SM768 (ex.: WL-UG7601HC / WL-UG7602HC):
   <https://www.wavlink.com/en_us/drivers.html>
@@ -86,7 +86,7 @@ sudo apt install build-essential pkg-config patch libdrm-dev
 | Adaptador USB | WAVLINK WL-UG7602HC (Silicon Motion SM768), `090c:0768` |
 | Tela externa | 1920x1080 @ 60 Hz |
 
-## Passo 0 — fazer o driver oficial instalar
+## Passo 0: fazer o driver oficial instalar
 
 Faça isto só se o instalador oficial falhou (kernel 6.8+). Ele não mexe no pacote
 do fabricante: escreve uma cópia corrigida ao lado, com o EVDI 1.14.7 embutido
@@ -108,7 +108,7 @@ cd <pasta-que-ele-imprimiu>      # ex.: SMIUSBDisplay-patched-evdi1.15.0
 sudo ./install.sh                # agora o build do EVDI passa → Installation complete!
 ```
 
-Ele roda **totalmente offline** — o source do EVDI 1.15.0 vem embutido neste repo
+Ele roda **totalmente offline**: o source do EVDI 1.15.0 vem embutido neste repo
 (`third_party/evdi-1.15.0.tar.gz`), então nada é baixado. O único arquivo que você
 busca é o driver do fabricante, que é fechado e não pode ser redistribuído aqui.
 
@@ -117,7 +117,7 @@ Opções: `--evdi-src <dir|tarball>` para apontar outro source local do EVDI,
 `--dry-run` para pré-visualizar, `--help` para todas as opções.
 
 **Secure Boot:** sem passo extra. O DKMS assina o módulo EVDI com a chave MOK já
-matriculada na máquina (`/var/lib/shim-signed/mok/MOK.der`) — a mesma que o Ubuntu
+matriculada na máquina (`/var/lib/shim-signed/mok/MOK.der`), a mesma que o Ubuntu
 usa para o VirtualBox e outros módulos DKMS. Você não cria nem matricula uma chave
 nova. Confira com `mokutil --sb-state`.
 
@@ -191,7 +191,7 @@ sudo systemctl mask smiusbdisplay.service
 
 - **Instalador oficial termina com `Failed to install evdi` / `bad exit status: 2`**:
   o EVDI 1.14.7 embutido não compila no kernel 6.8+. Rode o
-  [Passo 0](#passo-0--fazer-o-driver-oficial-instalar)
+  [Passo 0](#passo-0-fazer-o-driver-oficial-instalar)
   (`./scripts/prepare-vendor-driver.sh`) e instale a partir da cópia corrigida.
 - **`$SMI_DIR not found`**: o driver oficial da Silicon Motion ainda não está
   instalado; os arquivos do fabricante devem estar em `/opt/siliconmotion`. Se o
@@ -210,3 +210,16 @@ precisa do driver oficial instalado (veja o link de download da WAVLINK em
 [Pré-requisitos](#pré-requisitos)).
 
 Veja [Ambiente em que testamos](#ambiente-em-que-testamos) para as versões exatas.
+
+## Contribuindo
+
+Todas as contribuições são bem-vindas. Por favor, siga os padrões já documentados
+em [CONTRIBUTING.md](CONTRIBUTING.md): faça um fork, use uma branch de recurso,
+escreva commits no padrão [Conventional Commits](https://www.conventionalcommits.org/),
+mantenha os scripts idempotentes e reversíveis, valide com os modos que não alteram
+nada (`./scripts/diagnose.sh`, `./install.sh --build-only`, `--dry-run`) e abra um
+Pull Request na branch `main` usando o [PULL_REQUEST_TEMPLATE.md](PULL_REQUEST_TEMPLATE.md).
+
+## Autor
+
+Desenvolvido e mantido por [@IMNascimento](https://github.com/IMNascimento), dev principal.

@@ -36,7 +36,7 @@ strikes at install time; the other two strike on the desktop after installing.
    kernel **6.8+** (the kernel internal DRM API changed), so the module build
    fails with `bad exit status: 2`, the installer auto-reverts, and nothing is
    installed. Fixed by swapping the bundled EVDI for **1.15.0** (Jul 2026), which
-   builds cleanly on current kernels — see [Step 0](#step-0--make-the-official-driver-install-at-all).
+   builds cleanly on current kernels; see [Step 0](#step-0-make-the-official-driver-install-at-all).
 
 1. **Daemon crash on plug (`SIGSEGV`).** When a monitor is plugged in, the
    `SMIUSBDisplayManager` daemon calls the deprecated `evdi_open_attached_to(NULL)`
@@ -61,7 +61,7 @@ the display, after the display manager is already up.
 - Ubuntu 24.04 (also expected to work on 23.04 / 22.04 / 20.04).
 - The **official Silicon Motion driver installed** under `/opt/siliconmotion`
   (this repo patches it, it does not replace it). On kernel **6.8+** the vendor
-  installer will not complete on its own — do [Step 0](#step-0--make-the-official-driver-install-at-all)
+  installer will not complete on its own, so do [Step 0](#step-0-make-the-official-driver-install-at-all)
   first. Get the driver from WAVLINK's download center and pick your SM768-based
   model (e.g. WL-UG7601HC / WL-UG7602HC):
   <https://www.wavlink.com/en_us/drivers.html>
@@ -85,7 +85,7 @@ sudo apt install build-essential pkg-config patch libdrm-dev
 | USB adapter | WAVLINK WL-UG7602HC (Silicon Motion SM768), `090c:0768` |
 | External display | 1920x1080 @ 60 Hz |
 
-## Step 0 — make the official driver install at all
+## Step 0: make the official driver install at all
 
 Do this only if the official installer failed (kernel 6.8+). It leaves the vendor
 package untouched and writes a patched copy next to it, with the bundled EVDI
@@ -106,7 +106,7 @@ cd <folder-it-printed>          # e.g. SMIUSBDisplay-patched-evdi1.15.0
 sudo ./install.sh               # now the EVDI build succeeds → Installation complete!
 ```
 
-It runs **fully offline** — the EVDI 1.15.0 source is bundled in this repo
+It runs **fully offline**: the EVDI 1.15.0 source is bundled in this repo
 (`third_party/evdi-1.15.0.tar.gz`), so nothing is downloaded. The only file you
 fetch yourself is the vendor driver, which is closed-source and cannot be
 redistributed here.
@@ -116,7 +116,7 @@ Flags: `--evdi-src <dir|tarball>` to point at a different local EVDI source,
 `--dry-run` to preview, `--help` for all options.
 
 **Secure Boot:** no extra step. DKMS signs the EVDI module with the machine's
-already-enrolled MOK key (`/var/lib/shim-signed/mok/MOK.der`) — the same key
+already-enrolled MOK key (`/var/lib/shim-signed/mok/MOK.der`), the same key
 Ubuntu uses for VirtualBox and other DKMS modules. You do not create or enroll a
 new key. Confirm with `mokutil --sb-state`.
 
@@ -190,7 +190,7 @@ sudo systemctl mask smiusbdisplay.service
 
 - **Official installer ends with `Failed to install evdi` / `bad exit status: 2`**:
   the bundled EVDI 1.14.7 does not build on kernel 6.8+. Run
-  [Step 0](#step-0--make-the-official-driver-install-at-all)
+  [Step 0](#step-0-make-the-official-driver-install-at-all)
   (`./scripts/prepare-vendor-driver.sh`) and install from the patched copy.
 - **`$SMI_DIR not found`**: the official Silicon Motion driver is not installed
   yet; the vendor files must be in `/opt/siliconmotion`. If its installer aborts,
@@ -209,3 +209,16 @@ the official driver installed (see [Requirements](#requirements) for the WAVLINK
 download link).
 
 See [Environment we tested on](#environment-we-tested-on) for exact versions.
+
+## Contributing
+
+Contributions are welcome. Please follow the standards already documented in
+[CONTRIBUTING.md](CONTRIBUTING.md): fork, use a feature branch, write
+[Conventional Commits](https://www.conventionalcommits.org/), keep scripts
+idempotent and reversible, validate with the read-only modes
+(`./scripts/diagnose.sh`, `./install.sh --build-only`, `--dry-run`), and open a
+Pull Request against `main` using [PULL_REQUEST_TEMPLATE.md](PULL_REQUEST_TEMPLATE.md).
+
+## Author
+
+Developed and maintained by [@IMNascimento](https://github.com/IMNascimento), lead developer.
