@@ -1,79 +1,135 @@
-# [Nome do Projeto]
+# WAVLINK / SM768 USB Display Fix for Ubuntu 24.04
 
-![Build Status](https://img.shields.io/badge/build-passing-brightgreen)
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Version](https://img.shields.io/badge/version-1.0.0-blue)
+![License](https://img.shields.io/badge/license-GPLv3-blue.svg)
+![Platform](https://img.shields.io/badge/platform-Ubuntu%2024.04-orange)
+![Session](https://img.shields.io/badge/session-Wayland%20%7C%20X11-informational)
 
-## Introdução
+**English** · [Português](README.pt-BR.md)
 
-[Nome do Projeto] é uma ferramenta [descreva a principal funcionalidade ou objetivo do projeto] que oferece [benefícios principais]. Desenvolvido como um projeto open source, nosso objetivo é [explicar o objetivo principal do projeto].
+Makes WAVLINK / Silicon Motion **SM768** USB display adapters (USB id `090c:0768`)
+work on **Ubuntu 24.04** with **GNOME/Wayland** — the setup where the official
+Silicon Motion driver leaves you with a **gray screen at boot** and a USB monitor
+that **lights up and goes black** when plugged in.
 
-## Funcionalidades
+The fix lives entirely in the open-source (GPL) EVDI layer. It never touches the
+closed-source Silicon Motion daemon or firmware.
 
-- Funcionalidade 1
-- Funcionalidade 2
-- Funcionalidade 3
-- [Adicione outras funcionalidades importantes]
+---
 
-## Pré-requisitos
+## Symptoms this fixes
 
-Antes de começar, certifique-se de ter as seguintes ferramentas instaladas:
+- After installing the official driver, the desktop boots to a **frozen gray
+  screen**; you can only get in through recovery mode.
+- Plugging the USB display makes it flash ("universal graphic") and then go
+  **black** — the desktop never appears on it.
 
-- [Linguagem/Framework] versão X.X.X
-- [Banco de Dados]
-- [Dependências principais]
-- [Outros requisitos]
+## Root cause
 
-## Instalação
+Two independent bugs, both in the open EVDI layer — not in the firmware:
 
-Siga as etapas abaixo para configurar o projeto em sua máquina local:
+1. **Daemon crash on plug (`SIGSEGV`).** When a monitor is plugged in, the
+   `SMIUSBDisplayManager` daemon calls the deprecated `evdi_open_attached_to(NULL)`
+   to get a generic EVDI device. In libevdi **1.15** that wrapper runs
+   `strlen(NULL)` before `evdi_open_attached_to_fixed()` — which actually handles
+   `NULL` correctly — ever gets the pointer. The result is a null-pointer
+   dereference that kills the daemon every single time a display is connected.
 
-1. Clone o repositório:
-    ```bash
-    git clone https://github.com/usuario/repo.git
-    ```
-2. Navegue até o diretório do projeto:
-    ```bash
-    cd nome-do-projeto
-    ```
-3. Crie e ative o ambiente virtual:
-    ```bash
-    python -m venv venv
-    source venv/bin/activate  # Para Linux/MacOS
-    .\venv\Scripts\activate  # Para Windows
-    ```
-4. Instale as dependências:
-    ```bash
-    pip install -r requirements.txt
-    ```
+2. **Gray screen at boot (GPU selection).** The official installer drops
+   `/etc/modules-load.d/evdi.conf`, which **force-loads the `evdi` module at every
+   boot** with four virtual displays. Those virtual cards join the init race just
+   as `amdgpu` is coming up, and `mutter` (Wayland) sometimes picks the EFI boot
+   framebuffer (`simpledrm`) as the primary GPU, fails to render
+   (`gbm_surface_lock_front_buffer failed`), and shows a gray screen.
 
-## Uso
+The fix is a one-line NULL guard in `library/evdi_lib.c` (rebuilt into libevdi)
+plus stopping `evdi` from loading at boot — it loads on demand when you plug the
+display, after the display manager is already up.
 
-Após a instalação, você pode iniciar a aplicação com o seguinte comando:
+## Requirements
+
+- Ubuntu 24.04 (also expected to work on 23.04 / 22.04 / 20.04).
+- The **official Silicon Motion driver already installed** (this repo patches it,
+  it does not replace it). The vendor files must be under `/opt/siliconmotion`.
+- Build tools: `build-essential pkg-config patch libdrm-dev`.
 
 ```bash
-python manage.py runserver
+sudo apt install build-essential pkg-config patch libdrm-dev
 ```
 
-Acesse o projeto em http://localhost:8000.
+## Quick start
 
-## Exemplos de Uso
-```python
-# Exemplo de código mostrando como usar a funcionalidade principal do projeto
+```bash
+git clone https://github.com/IMNascimento/wavlink_driver_ubuntu.git
+cd wavlink_driver_ubuntu
+
+./scripts/diagnose.sh     # 1. read-only health check — changes nothing
+sudo ./install.sh         # 2. apply the fix
+# 3. plug in the USB display — it should light up automatically
 ```
 
-## Contribuindo
+## Test before you commit to anything
 
-Contribuições são bem-vindas! Por favor, siga as diretrizes em CONTRIBUTING.md para fazer um pull request.
+Three layers of safe checking, none of which modify your system permanently:
 
-## Licença
+| Command | What it does | Root? |
+| --- | --- | --- |
+| `./scripts/diagnose.sh` | Reports OS, GPU, adapter, fix status, deps. Read-only. | no |
+| `./install.sh --build-only` | Compiles the patched libevdi to a temp dir and verifies it. Installs nothing. | no |
+| `./install.sh --dry-run` | Prints every action it *would* take. Changes nothing. | no |
 
-Distribuído sob a licença MIT. Veja LICENSE para mais informações.
+Run all three and read the output before running the real `sudo ./install.sh`.
 
-## Autores
+## Usage
 
-Seu Nome - Desenvolvedor Principal - Seu Perfil GitHub
+Once installed, the display is fully automatic:
 
-## Agradecimentos
-[Recursos ou bibliotecas que você usou]
-[Qualquer outra pessoa ou organização que você queira mencionar]
+- **Plug in** the USB adapter → the service starts on-demand (via the vendor udev
+  rule), `evdi` loads, and your desktop extends onto the external monitor.
+- **Unplug** → the service stops. Nothing runs at boot, so boots stay clean.
+
+Configure the external monitor (mirror / extend / resolution) in
+**Settings → Displays** as usual.
+
+## Reverting
+
+Full revert to the vendor-default state:
+
+```bash
+sudo ./uninstall.sh        # add --dry-run to preview
+```
+
+This restores the original libevdi and the boot config. Note that restoring the
+vendor boot config can bring back the original gray screen; if it does, just
+neutralize the service:
+
+```bash
+sudo systemctl mask smiusbdisplay.service
+```
+
+## How it works
+
+| File | Role |
+| --- | --- |
+| `patches/evdi-open-attached-to-null-guard.patch` | The one-line NULL guard for `evdi_open_attached_to()`. |
+| `scripts/diagnose.sh` | Read-only system health check. |
+| `install.sh` | Builds the patched libevdi from the vendor's `evdi.tar.gz`, backs up the original, installs it, disables the boot force-load, enables on-plug startup. |
+| `uninstall.sh` | Reverts everything to the vendor-default state. |
+
+## Troubleshooting
+
+- **`$SMI_DIR not found`** — install the official Silicon Motion driver first;
+  the vendor files must be in `/opt/siliconmotion`.
+- **`patch failed to apply`** — your libevdi version differs from 1.15; the guard
+  targets that release.
+- **Still gray at boot** — confirm `/etc/modules-load.d/evdi.conf` is gone
+  (`./scripts/diagnose.sh` reports this) and, as a last resort, mask the service.
+
+## Credits & license
+
+The patch modifies **libevdi**, which is licensed under the **GPL** by DisplayLink
+(UK) Ltd. This repository is distributed under the **GPLv3** (see [LICENSE](LICENSE)).
+The Silicon Motion binaries and firmware are **not** redistributed here — you need
+the official driver installed.
+
+Tested on: Ubuntu 24.04.4, kernel 6.17, GNOME/Wayland, AMD APU (Lucienne),
+EVDI 1.15.0, adapter `090c:0768`, external display 1920x1080@60.
