@@ -18,14 +18,25 @@ closed-source Silicon Motion daemon or firmware.
 
 ## Symptoms this fixes
 
-- After installing the official driver, the desktop boots to a **frozen gray
-  screen**; you can only get in through recovery mode.
+- The **official installer aborts** on Ubuntu 24.04's kernel (6.8+): it ends with
+  `Failed to install evdi ... to the kernel` / `bad exit status: 2`, rolls itself
+  back, and the driver is never installed (`/opt/siliconmotion` is not created).
+- After installing the driver, the desktop boots to a **frozen gray screen**; you
+  can only get in through recovery mode.
 - Plugging the USB display makes it flash ("universal graphic") and then go
   **black**, the desktop never appears on it.
 
 ## Root cause
 
-Two independent bugs, both in the open EVDI layer, not in the firmware:
+Three problems, all in the open-source EVDI layer, none in the firmware. The first
+strikes at install time; the other two strike on the desktop after installing.
+
+0. **Installer aborts on modern kernels (build failure).** The vendor `.run`
+   bundles **EVDI 1.14.7** (Nov 2024). Its DKMS build does not compile against
+   kernel **6.8+** (the kernel internal DRM API changed), so the module build
+   fails with `bad exit status: 2`, the installer auto-reverts, and nothing is
+   installed. Fixed by swapping the bundled EVDI for **1.15.0** (Jul 2026), which
+   builds cleanly on current kernels — see [Step 0](#step-0--make-the-official-driver-install-at-all).
 
 1. **Daemon crash on plug (`SIGSEGV`).** When a monitor is plugged in, the
    `SMIUSBDisplayManager` daemon calls the deprecated `evdi_open_attached_to(NULL)`
@@ -48,10 +59,11 @@ the display, after the display manager is already up.
 ## Requirements
 
 - Ubuntu 24.04 (also expected to work on 23.04 / 22.04 / 20.04).
-- The **official Silicon Motion driver already installed** (this repo patches it,
-  it does not replace it). The vendor files must be under `/opt/siliconmotion`.
-  Get the driver from WAVLINK's download center and pick your SM768-based model
-  (e.g. WL-UG7601HC / WL-UG7602HC):
+- The **official Silicon Motion driver installed** under `/opt/siliconmotion`
+  (this repo patches it, it does not replace it). On kernel **6.8+** the vendor
+  installer will not complete on its own — do [Step 0](#step-0--make-the-official-driver-install-at-all)
+  first. Get the driver from WAVLINK's download center and pick your SM768-based
+  model (e.g. WL-UG7601HC / WL-UG7602HC):
   <https://www.wavlink.com/en_us/drivers.html>
 - Build tools: `build-essential pkg-config patch libdrm-dev`.
 
@@ -73,14 +85,49 @@ sudo apt install build-essential pkg-config patch libdrm-dev
 | USB adapter | WAVLINK WL-UG7602HC (Silicon Motion SM768), `090c:0768` |
 | External display | 1920x1080 @ 60 Hz |
 
+## Step 0 — make the official driver install at all
+
+Do this only if the official installer failed (kernel 6.8+). It leaves the vendor
+package untouched and writes a patched copy next to it, with the bundled EVDI
+1.14.7 replaced by 1.15.0 so the DKMS build succeeds.
+
+```bash
+# point it at the vendor installer (WAVLINK download, SMIUSBDisplay-driver.*.run)
+./scripts/prepare-vendor-driver.sh --run "SMIUSBDisplay-driver.2.22.1.0.run"
+
+# or at an already-extracted vendor folder:
+./scripts/prepare-vendor-driver.sh --dir "SMIUSBDisplay"
+```
+
+It prints the path of the patched folder; install the vendor driver from there:
+
+```bash
+cd <folder-it-printed>          # e.g. SMIUSBDisplay-patched-evdi1.15.0
+sudo ./install.sh               # now the EVDI build succeeds → Installation complete!
+```
+
+Flags: `--evdi-src <dir|tarball>` to use a local EVDI 1.15.0 source offline,
+`--evdi-tag <tag>` to pick another release (default `v1.15.0`), `--dry-run` to
+preview, `--help` for all options.
+
+**Secure Boot:** no extra step. DKMS signs the EVDI module with the machine's
+already-enrolled MOK key (`/var/lib/shim-signed/mok/MOK.der`) — the same key
+Ubuntu uses for VirtualBox and other DKMS modules. You do not create or enroll a
+new key. Confirm with `mokutil --sb-state`.
+
+After the vendor driver installs cleanly, continue with the desktop fix below.
+
 ## Quick start
 
 ```bash
 git clone https://github.com/IMNascimento/wavlink_driver_ubuntu.git
 cd wavlink_driver_ubuntu
 
+# 0. only if the official installer failed on kernel 6.8+ (see Step 0 above):
+./scripts/prepare-vendor-driver.sh --run "SMIUSBDisplay-driver.2.22.1.0.run"
+
 ./scripts/diagnose.sh     # 1. read-only health check, changes nothing
-sudo ./install.sh         # 2. apply the fix
+sudo ./install.sh         # 2. apply the desktop fix
 # 3. plug in the USB display, it should light up automatically
 ```
 
@@ -127,6 +174,7 @@ sudo systemctl mask smiusbdisplay.service
 
 | File | Role |
 | --- | --- |
+| `scripts/prepare-vendor-driver.sh` | Step 0: repacks the vendor `evdi.tar.gz` with EVDI 1.15.0 so the official installer builds on kernel 6.8+. |
 | `patches/evdi-open-attached-to-null-guard.patch` | The one-line NULL guard for `evdi_open_attached_to()`. |
 | `scripts/diagnose.sh` | Read-only system health check. |
 | `install.sh` | Builds the patched libevdi from the vendor's `evdi.tar.gz`, backs up the original, installs it, disables the boot force-load, enables on-plug startup. |
@@ -134,8 +182,13 @@ sudo systemctl mask smiusbdisplay.service
 
 ## Troubleshooting
 
-- **`$SMI_DIR not found`**: install the official Silicon Motion driver first;
-  the vendor files must be in `/opt/siliconmotion`.
+- **Official installer ends with `Failed to install evdi` / `bad exit status: 2`**:
+  the bundled EVDI 1.14.7 does not build on kernel 6.8+. Run
+  [Step 0](#step-0--make-the-official-driver-install-at-all)
+  (`./scripts/prepare-vendor-driver.sh`) and install from the patched copy.
+- **`$SMI_DIR not found`**: the official Silicon Motion driver is not installed
+  yet; the vendor files must be in `/opt/siliconmotion`. If its installer aborts,
+  see the entry above.
 - **`patch failed to apply`**: your libevdi version differs from 1.15; the guard
   targets that release.
 - **Still gray at boot**: confirm `/etc/modules-load.d/evdi.conf` is gone

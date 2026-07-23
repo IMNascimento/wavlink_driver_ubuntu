@@ -18,14 +18,26 @@ daemon fechado da Silicon Motion nem o firmware.
 
 ## Sintomas que isto resolve
 
-- Depois de instalar o driver oficial, a área de trabalho abre em **cinza
-  congelado**; só dá pra entrar pelo modo de recuperação.
+- O **instalador oficial aborta** no kernel do Ubuntu 24.04 (6.8+): termina com
+  `Failed to install evdi ... to the kernel` / `bad exit status: 2`, se reverte
+  sozinho e o driver nunca é instalado (`/opt/siliconmotion` não é criado).
+- Depois de instalar o driver, a área de trabalho abre em **cinza congelado**; só
+  dá pra entrar pelo modo de recuperação.
 - Ao plugar a tela USB, ela pisca ("universal graphic") e depois **apaga**, a
   área de trabalho nunca aparece nela.
 
 ## Causa raiz
 
-São **dois** bugs independentes, ambos na camada aberta do EVDI, não no firmware:
+São **três** problemas, todos na camada aberta do EVDI, nenhum no firmware. O
+primeiro ocorre na instalação; os outros dois na área de trabalho, depois de
+instalar.
+
+0. **Instalador aborta em kernels novos (falha de build).** O `.run` do fabricante
+   embute o **EVDI 1.14.7** (nov/2024). O build via DKMS não compila no kernel
+   **6.8+** (a API interna de DRM do kernel mudou), então falha com
+   `bad exit status: 2`, o instalador se reverte e nada é instalado. Corrigido
+   trocando o EVDI embutido pela versão **1.15.0** (jul/2026), que compila nos
+   kernels atuais — veja o [Passo 0](#passo-0--fazer-o-driver-oficial-instalar).
 
 1. **Crash do daemon ao plugar (`SIGSEGV`).** Ao plugar o monitor, o
    `SMIUSBDisplayManager` chama a função *deprecada* `evdi_open_attached_to(NULL)`
@@ -48,10 +60,11 @@ demanda ao plugar a tela, já com o display manager no ar.
 ## Pré-requisitos
 
 - Ubuntu 24.04 (também deve funcionar em 23.04 / 22.04 / 20.04).
-- O **driver oficial da Silicon Motion já instalado** (este repositório corrige o
-  driver, não o substitui). Os arquivos do fabricante devem estar em
-  `/opt/siliconmotion`. Baixe o driver no centro de downloads da WAVLINK e escolha
-  o seu modelo com chip SM768 (ex.: WL-UG7601HC / WL-UG7602HC):
+- O **driver oficial da Silicon Motion instalado** em `/opt/siliconmotion` (este
+  repositório corrige o driver, não o substitui). No kernel **6.8+** o instalador
+  do fabricante não conclui sozinho — faça o [Passo 0](#passo-0--fazer-o-driver-oficial-instalar)
+  antes. Baixe o driver no centro de downloads da WAVLINK e escolha o seu modelo
+  com chip SM768 (ex.: WL-UG7601HC / WL-UG7602HC):
   <https://www.wavlink.com/en_us/drivers.html>
 - Ferramentas de build: `build-essential pkg-config patch libdrm-dev`.
 
@@ -73,14 +86,50 @@ sudo apt install build-essential pkg-config patch libdrm-dev
 | Adaptador USB | WAVLINK WL-UG7602HC (Silicon Motion SM768), `090c:0768` |
 | Tela externa | 1920x1080 @ 60 Hz |
 
+## Passo 0 — fazer o driver oficial instalar
+
+Faça isto só se o instalador oficial falhou (kernel 6.8+). Ele não mexe no pacote
+do fabricante: escreve uma cópia corrigida ao lado, com o EVDI 1.14.7 embutido
+substituído pelo 1.15.0, para o build via DKMS passar.
+
+```bash
+# aponte para o instalador do fabricante (download WAVLINK, SMIUSBDisplay-driver.*.run)
+./scripts/prepare-vendor-driver.sh --run "SMIUSBDisplay-driver.2.22.1.0.run"
+
+# ou para uma pasta do fabricante já extraída:
+./scripts/prepare-vendor-driver.sh --dir "SMIUSBDisplay"
+```
+
+Ele imprime o caminho da pasta corrigida; instale o driver do fabricante a partir
+dela:
+
+```bash
+cd <pasta-que-ele-imprimiu>      # ex.: SMIUSBDisplay-patched-evdi1.15.0
+sudo ./install.sh                # agora o build do EVDI passa → Installation complete!
+```
+
+Opções: `--evdi-src <dir|tarball>` para usar um source local do EVDI 1.15.0 offline,
+`--evdi-tag <tag>` para escolher outra release (padrão `v1.15.0`), `--dry-run` para
+pré-visualizar, `--help` para todas as opções.
+
+**Secure Boot:** sem passo extra. O DKMS assina o módulo EVDI com a chave MOK já
+matriculada na máquina (`/var/lib/shim-signed/mok/MOK.der`) — a mesma que o Ubuntu
+usa para o VirtualBox e outros módulos DKMS. Você não cria nem matricula uma chave
+nova. Confira com `mokutil --sb-state`.
+
+Com o driver do fabricante instalado, siga para a correção da área de trabalho abaixo.
+
 ## Início rápido
 
 ```bash
 git clone https://github.com/IMNascimento/wavlink_driver_ubuntu.git
 cd wavlink_driver_ubuntu
 
+# 0. só se o instalador oficial falhou no kernel 6.8+ (veja o Passo 0 acima):
+./scripts/prepare-vendor-driver.sh --run "SMIUSBDisplay-driver.2.22.1.0.run"
+
 ./scripts/diagnose.sh     # 1. checagem read-only, não altera nada
-sudo ./install.sh         # 2. aplica a correção
+sudo ./install.sh         # 2. aplica a correção da área de trabalho
 # 3. pluge a tela USB, deve acender sozinha
 ```
 
@@ -127,6 +176,7 @@ sudo systemctl mask smiusbdisplay.service
 
 | Arquivo | Papel |
 | --- | --- |
+| `scripts/prepare-vendor-driver.sh` | Passo 0: reempacota o `evdi.tar.gz` do fabricante com o EVDI 1.15.0 para o instalador oficial compilar no kernel 6.8+. |
 | `patches/evdi-open-attached-to-null-guard.patch` | O guard de `NULL` de uma linha para `evdi_open_attached_to()`. |
 | `scripts/diagnose.sh` | Checagem read-only do sistema. |
 | `install.sh` | Compila a libevdi corrigida a partir do `evdi.tar.gz` do fabricante, faz backup da original, instala, desativa o force-load no boot e habilita o start sob demanda. |
@@ -134,8 +184,13 @@ sudo systemctl mask smiusbdisplay.service
 
 ## Solução de problemas
 
-- **`$SMI_DIR not found`**: instale o driver oficial da Silicon Motion primeiro;
-  os arquivos do fabricante devem estar em `/opt/siliconmotion`.
+- **Instalador oficial termina com `Failed to install evdi` / `bad exit status: 2`**:
+  o EVDI 1.14.7 embutido não compila no kernel 6.8+. Rode o
+  [Passo 0](#passo-0--fazer-o-driver-oficial-instalar)
+  (`./scripts/prepare-vendor-driver.sh`) e instale a partir da cópia corrigida.
+- **`$SMI_DIR not found`**: o driver oficial da Silicon Motion ainda não está
+  instalado; os arquivos do fabricante devem estar em `/opt/siliconmotion`. Se o
+  instalador dele abortar, veja o item acima.
 - **`patch failed to apply`**: sua versão da libevdi difere da 1.15; o guard mira
   nessa versão.
 - **Ainda cinza no boot**: confirme que `/etc/modules-load.d/evdi.conf` sumiu
