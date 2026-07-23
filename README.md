@@ -56,6 +56,20 @@ display, after the display manager is already up.
 sudo apt install build-essential pkg-config patch libdrm-dev
 ```
 
+## Environment we tested on
+
+| Component | Version |
+| --- | --- |
+| Distribution | Ubuntu 24.04.4 LTS (Noble Numbat) |
+| Kernel | 6.17.0-35-generic |
+| Desktop | GNOME Shell 46.0 |
+| Display server / interface | **Wayland** (also works on X11) |
+| Login manager | GDM3 |
+| GPU driver | AMD `amdgpu` (Lucienne APU) |
+| EVDI / libevdi | 1.15.0 |
+| USB adapter | WAVLINK / Silicon Motion SM768 — `090c:0768` |
+| External display | 1920x1080 @ 60 Hz |
+
 ## Quick start
 
 ```bash
@@ -131,5 +145,4 @@ The patch modifies **libevdi**, which is licensed under the **GPL** by DisplayLi
 The Silicon Motion binaries and firmware are **not** redistributed here — you need
 the official driver installed.
 
-Tested on: Ubuntu 24.04.4, kernel 6.17, GNOME/Wayland, AMD APU (Lucienne),
-EVDI 1.15.0, adapter `090c:0768`, external display 1920x1080@60.
+See [Environment we tested on](#environment-we-tested-on) for exact versions.

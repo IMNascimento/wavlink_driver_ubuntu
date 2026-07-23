@@ -57,6 +57,20 @@ demanda ao plugar a tela, já com o display manager no ar.
 sudo apt install build-essential pkg-config patch libdrm-dev
 ```
 
+## Ambiente em que testamos
+
+| Componente | Versão |
+| --- | --- |
+| Distribuição | Ubuntu 24.04.4 LTS (Noble Numbat) |
+| Kernel | 6.17.0-35-generic |
+| Ambiente gráfico | GNOME Shell 46.0 |
+| Servidor gráfico / interface | **Wayland** (também funciona no X11) |
+| Gerenciador de login | GDM3 |
+| Driver de GPU | AMD `amdgpu` (APU Lucienne) |
+| EVDI / libevdi | 1.15.0 |
+| Adaptador USB | WAVLINK / Silicon Motion SM768 — `090c:0768` |
+| Tela externa | 1920x1080 @ 60 Hz |
+
 ## Início rápido
 
 ```bash
@@ -132,5 +146,4 @@ Este repositório é distribuído sob a **GPLv3** (veja [LICENSE](LICENSE)). Os
 binários e o firmware da Silicon Motion **não** são redistribuídos aqui — você
 precisa do driver oficial instalado.
 
-Testado em: Ubuntu 24.04.4, kernel 6.17, GNOME/Wayland, APU AMD (Lucienne),
-EVDI 1.15.0, adaptador `090c:0768`, tela externa 1920x1080@60.
+Veja [Ambiente em que testamos](#ambiente-em-que-testamos) para as versões exatas.
