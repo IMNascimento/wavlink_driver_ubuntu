@@ -106,9 +106,14 @@ cd <folder-it-printed>          # e.g. SMIUSBDisplay-patched-evdi1.15.0
 sudo ./install.sh               # now the EVDI build succeeds → Installation complete!
 ```
 
-Flags: `--evdi-src <dir|tarball>` to use a local EVDI 1.15.0 source offline,
-`--evdi-tag <tag>` to pick another release (default `v1.15.0`), `--dry-run` to
-preview, `--help` for all options.
+It runs **fully offline** — the EVDI 1.15.0 source is bundled in this repo
+(`third_party/evdi-1.15.0.tar.gz`), so nothing is downloaded. The only file you
+fetch yourself is the vendor driver, which is closed-source and cannot be
+redistributed here.
+
+Flags: `--evdi-src <dir|tarball>` to point at a different local EVDI source,
+`--evdi-tag <tag>` to clone another release from GitHub instead of the bundle,
+`--dry-run` to preview, `--help` for all options.
 
 **Secure Boot:** no extra step. DKMS signs the EVDI module with the machine's
 already-enrolled MOK key (`/var/lib/shim-signed/mok/MOK.der`) — the same key
@@ -175,6 +180,7 @@ sudo systemctl mask smiusbdisplay.service
 | File | Role |
 | --- | --- |
 | `scripts/prepare-vendor-driver.sh` | Step 0: repacks the vendor `evdi.tar.gz` with EVDI 1.15.0 so the official installer builds on kernel 6.8+. |
+| `third_party/evdi-1.15.0.tar.gz` | Bundled EVDI 1.15.0 source so Step 0 runs offline. |
 | `patches/evdi-open-attached-to-null-guard.patch` | The one-line NULL guard for `evdi_open_attached_to()`. |
 | `scripts/diagnose.sh` | Read-only system health check. |
 | `install.sh` | Builds the patched libevdi from the vendor's `evdi.tar.gz`, backs up the original, installs it, disables the boot force-load, enables on-plug startup. |
