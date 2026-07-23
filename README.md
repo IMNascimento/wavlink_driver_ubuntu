@@ -7,7 +7,7 @@
 **English** · [Português](README.pt-BR.md)
 
 Makes WAVLINK / Silicon Motion **SM768** USB display adapters (USB id `090c:0768`)
-work on **Ubuntu 24.04** with **GNOME/Wayland** — the setup where the official
+work on **Ubuntu 24.04** with **GNOME/Wayland**, the setup where the official
 Silicon Motion driver leaves you with a **gray screen at boot** and a USB monitor
 that **lights up and goes black** when plugged in.
 
@@ -21,17 +21,17 @@ closed-source Silicon Motion daemon or firmware.
 - After installing the official driver, the desktop boots to a **frozen gray
   screen**; you can only get in through recovery mode.
 - Plugging the USB display makes it flash ("universal graphic") and then go
-  **black** — the desktop never appears on it.
+  **black**, the desktop never appears on it.
 
 ## Root cause
 
-Two independent bugs, both in the open EVDI layer — not in the firmware:
+Two independent bugs, both in the open EVDI layer, not in the firmware:
 
 1. **Daemon crash on plug (`SIGSEGV`).** When a monitor is plugged in, the
    `SMIUSBDisplayManager` daemon calls the deprecated `evdi_open_attached_to(NULL)`
    to get a generic EVDI device. In libevdi **1.15** that wrapper runs
-   `strlen(NULL)` before `evdi_open_attached_to_fixed()` — which actually handles
-   `NULL` correctly — ever gets the pointer. The result is a null-pointer
+   `strlen(NULL)` before `evdi_open_attached_to_fixed()`, which actually handles
+   `NULL` correctly, ever gets the pointer. The result is a null-pointer
    dereference that kills the daemon every single time a display is connected.
 
 2. **Gray screen at boot (GPU selection).** The official installer drops
@@ -42,14 +42,17 @@ Two independent bugs, both in the open EVDI layer — not in the firmware:
    (`gbm_surface_lock_front_buffer failed`), and shows a gray screen.
 
 The fix is a one-line NULL guard in `library/evdi_lib.c` (rebuilt into libevdi)
-plus stopping `evdi` from loading at boot — it loads on demand when you plug the
-display, after the display manager is already up.
+plus stopping `evdi` from loading at boot. It then loads on demand when you plug
+the display, after the display manager is already up.
 
 ## Requirements
 
 - Ubuntu 24.04 (also expected to work on 23.04 / 22.04 / 20.04).
 - The **official Silicon Motion driver already installed** (this repo patches it,
   it does not replace it). The vendor files must be under `/opt/siliconmotion`.
+  Get the driver from WAVLINK's download center and pick your SM768-based model
+  (e.g. WL-UG7601HC / WL-UG7602HC):
+  <https://www.wavlink.com/en_us/drivers.html>
 - Build tools: `build-essential pkg-config patch libdrm-dev`.
 
 ```bash
@@ -67,7 +70,7 @@ sudo apt install build-essential pkg-config patch libdrm-dev
 | Login manager | GDM3 |
 | GPU driver | AMD `amdgpu` (Lucienne APU) |
 | EVDI / libevdi | 1.15.0 |
-| USB adapter | WAVLINK / Silicon Motion SM768 — `090c:0768` |
+| USB adapter | WAVLINK / Silicon Motion SM768, `090c:0768` |
 | External display | 1920x1080 @ 60 Hz |
 
 ## Quick start
@@ -76,9 +79,9 @@ sudo apt install build-essential pkg-config patch libdrm-dev
 git clone https://github.com/IMNascimento/wavlink_driver_ubuntu.git
 cd wavlink_driver_ubuntu
 
-./scripts/diagnose.sh     # 1. read-only health check — changes nothing
+./scripts/diagnose.sh     # 1. read-only health check, changes nothing
 sudo ./install.sh         # 2. apply the fix
-# 3. plug in the USB display — it should light up automatically
+# 3. plug in the USB display, it should light up automatically
 ```
 
 ## Test before you commit to anything
@@ -131,18 +134,19 @@ sudo systemctl mask smiusbdisplay.service
 
 ## Troubleshooting
 
-- **`$SMI_DIR not found`** — install the official Silicon Motion driver first;
+- **`$SMI_DIR not found`**: install the official Silicon Motion driver first;
   the vendor files must be in `/opt/siliconmotion`.
-- **`patch failed to apply`** — your libevdi version differs from 1.15; the guard
+- **`patch failed to apply`**: your libevdi version differs from 1.15; the guard
   targets that release.
-- **Still gray at boot** — confirm `/etc/modules-load.d/evdi.conf` is gone
+- **Still gray at boot**: confirm `/etc/modules-load.d/evdi.conf` is gone
   (`./scripts/diagnose.sh` reports this) and, as a last resort, mask the service.
 
 ## Credits & license
 
 The patch modifies **libevdi**, which is licensed under the **GPL** by DisplayLink
 (UK) Ltd. This repository is distributed under the **GPLv3** (see [LICENSE](LICENSE)).
-The Silicon Motion binaries and firmware are **not** redistributed here — you need
-the official driver installed.
+The Silicon Motion binaries and firmware are **not** redistributed here; you need
+the official driver installed (see [Requirements](#requirements) for the WAVLINK
+download link).
 
 See [Environment we tested on](#environment-we-tested-on) for exact versions.
