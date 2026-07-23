@@ -12,12 +12,15 @@
 #   repo's install.sh then has nothing to patch. Run this first: it swaps the
 #   bundled evdi.tar.gz for a 1.15.0 one and leaves a ready-to-run vendor tree.
 #
+# By default it uses the EVDI 1.15.0 source bundled in this repo
+# (third_party/evdi-1.15.0.tar.gz), so it works fully offline with no download.
+#
 # Usage:
 #   ./scripts/prepare-vendor-driver.sh --dir <extracted-vendor-dir>
 #   ./scripts/prepare-vendor-driver.sh --run <SMIUSBDisplay-driver.x.y.z.run>
-#     [--evdi-src <dir|tarball>]   use a local EVDI source (offline, no network)
-#     [--evdi-tag <tag>]           git tag to clone from DisplayLink/evdi
-#                                  (default: v1.15.0; needs network)
+#     [--evdi-src <dir|tarball>]   use a different local EVDI source (offline)
+#     [--evdi-tag <tag>]           clone this tag from DisplayLink/evdi instead
+#                                  of the bundled source (needs network)
 #     [--out <dir>]                where to write the patched copy
 #     [--dry-run]                  print every action, change nothing
 #     [--help]
@@ -31,8 +34,11 @@
 #
 set -euo pipefail
 
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 EVDI_REPO="https://github.com/DisplayLink/evdi.git"
 EVDI_TAG="v1.15.0"
+EVDI_TAG_SET=""
+BUNDLED_EVDI="$HERE/../third_party/evdi-1.15.0.tar.gz"
 SRC_RUN=""
 SRC_DIR=""
 EVDI_SRC=""
@@ -49,7 +55,7 @@ while [ $# -gt 0 ]; do
     --dir)      SRC_DIR="${2:-}"; shift 2 ;;
     --run)      SRC_RUN="${2:-}"; shift 2 ;;
     --evdi-src) EVDI_SRC="${2:-}"; shift 2 ;;
-    --evdi-tag) EVDI_TAG="${2:-}"; shift 2 ;;
+    --evdi-tag) EVDI_TAG="${2:-}"; EVDI_TAG_SET="yes"; shift 2 ;;
     --out)      OUT_DIR="${2:-}"; shift 2 ;;
     --dry-run)  MODE="dry-run"; shift ;;
     -h|--help)  grep '^#' "$0" | grep -v '^#!' | sed 's/^# \{0,1\}//'; exit 0 ;;
@@ -86,12 +92,19 @@ resolve_evdi_root() { # find the dir holding module/dkms.conf under $1
   hit="$(find "$base" -type f -path '*/module/dkms.conf' 2>/dev/null | head -n1)"
   [ -n "$hit" ] && printf '%s\n' "$(dirname "$(dirname "$hit")")"
 }
+# Pick the EVDI source: explicit --evdi-src wins; then an explicit --evdi-tag
+# (network); otherwise the source bundled in this repo (offline default).
+if [ -z "$EVDI_SRC" ] && [ -z "$EVDI_TAG_SET" ] && [ -f "$BUNDLED_EVDI" ]; then
+  EVDI_SRC="$BUNDLED_EVDI"
+  say "Using EVDI source bundled in this repo (offline)"
+fi
+
 if [ -n "$EVDI_SRC" ]; then
   if [ -d "$EVDI_SRC" ]; then
-    say "Using local EVDI source tree: $EVDI_SRC"
+    say "EVDI source tree: $EVDI_SRC"
     EVDI_ROOT="$(resolve_evdi_root "$EVDI_SRC")"
   elif [ -f "$EVDI_SRC" ]; then
-    say "Extracting local EVDI source tarball: $EVDI_SRC"
+    say "Extracting EVDI source tarball: $EVDI_SRC"
     run "mkdir -p '$WORK/evdi' && tar xf '$EVDI_SRC' -C '$WORK/evdi'"
     EVDI_ROOT="$(resolve_evdi_root "$WORK/evdi")"
   else
