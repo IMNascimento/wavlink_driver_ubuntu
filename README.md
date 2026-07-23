@@ -70,7 +70,7 @@ sudo apt install build-essential pkg-config patch libdrm-dev
 | Login manager | GDM3 |
 | GPU driver | AMD `amdgpu` (Lucienne APU) |
 | EVDI / libevdi | 1.15.0 |
-| USB adapter | WAVLINK / Silicon Motion SM768, `090c:0768` |
+| USB adapter | WAVLINK WL-UG7602HC (Silicon Motion SM768), `090c:0768` |
 | External display | 1920x1080 @ 60 Hz |
 
 ## Quick start
