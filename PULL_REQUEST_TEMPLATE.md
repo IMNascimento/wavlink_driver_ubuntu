@@ -1,8 +1,8 @@
-# Template de Pull Request
+# Template de Pull Request — WAVLINK SM768 USB Display Fix
 
 ## Descrição
 
-Por favor, inclua um resumo da mudança e qual issue foi resolvida. Inclua também contexto relevante e motivações para a mudança.
+Resuma a mudança e o motivo. Referencie a issue relacionada, se houver.
 
 Fixes # (issue)
 
@@ -11,22 +11,23 @@ Fixes # (issue)
 - [ ] Bugfix
 - [ ] Nova funcionalidade
 - [ ] Alteração de funcionalidade existente
-- [ ] Refatoração de código
+- [ ] Refatoração
 - [ ] Documentação
 
 ## Como isso foi testado?
 
-Descreva os testes que você rodou para verificar suas mudanças. Inclua instruções que permitam que possamos reproduzir. Liste quaisquer detalhes relevantes para a configuração do teste.
+- [ ] `./scripts/diagnose.sh`
+- [ ] `./install.sh --build-only`
+- [ ] `./install.sh --dry-run` / `./uninstall.sh --dry-run`
+- [ ] Instalação real em máquina/VM com o driver oficial
 
-- [ ] Testes unitários
-- [ ] Testes manuais
+Descreva o ambiente de teste (distro, kernel, sessão, GPU, adaptador):
 
 ## Checklist
 
-- [ ] Meu código segue as diretrizes de estilo deste projeto
-- [ ] Eu fiz uma autoavaliação do meu código
-- [ ] Eu comentei meu código, principalmente em áreas difíceis de entender
-- [ ] Eu fiz as mudanças correspondentes na documentação
-- [ ] Minhas mudanças não geram novos avisos
-- [ ] Eu adicionei testes que provam que minha correção é eficaz ou que minha feature funciona
-- [ ] Testes novos e existentes passam com as mudanças
+- [ ] Segue os padrões de código e Conventional Commits
+- [ ] Fiz uma autoavaliação do código
+- [ ] Comentei trechos difíceis de entender
+- [ ] Atualizei a documentação (README / CHANGELOG) quando necessário
+- [ ] As mudanças não geram novos avisos
+- [ ] Os scripts continuam idempotentes e reversíveis
