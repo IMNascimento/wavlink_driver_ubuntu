@@ -211,6 +211,15 @@ precisa do driver oficial instalado (veja o link de download da WAVLINK em
 
 Veja [Ambiente em que testamos](#ambiente-em-que-testamos) para as versões exatas.
 
+## Contribuindo
+
+Todas as contribuições são bem-vindas. Por favor, siga os padrões já documentados
+em [CONTRIBUTING.md](CONTRIBUTING.md): faça um fork, use uma branch de recurso,
+escreva commits no padrão [Conventional Commits](https://www.conventionalcommits.org/),
+mantenha os scripts idempotentes e reversíveis, valide com os modos que não alteram
+nada (`./scripts/diagnose.sh`, `./install.sh --build-only`, `--dry-run`) e abra um
+Pull Request na branch `main` usando o [PULL_REQUEST_TEMPLATE.md](PULL_REQUEST_TEMPLATE.md).
+
 ## Autor
 
 Desenvolvido e mantido por [@IMNascimento](https://github.com/IMNascimento), dev principal.

@@ -210,6 +210,15 @@ download link).
 
 See [Environment we tested on](#environment-we-tested-on) for exact versions.
 
+## Contributing
+
+Contributions are welcome. Please follow the standards already documented in
+[CONTRIBUTING.md](CONTRIBUTING.md): fork, use a feature branch, write
+[Conventional Commits](https://www.conventionalcommits.org/), keep scripts
+idempotent and reversible, validate with the read-only modes
+(`./scripts/diagnose.sh`, `./install.sh --build-only`, `--dry-run`), and open a
+Pull Request against `main` using [PULL_REQUEST_TEMPLATE.md](PULL_REQUEST_TEMPLATE.md).
+
 ## Author
 
 Developed and maintained by [@IMNascimento](https://github.com/IMNascimento), lead developer.
