@@ -171,8 +171,8 @@ everything still works.
 `/dev/dri/cardN` each, and the USB display daemon then claims one from that pool
 for every monitor you plug in. The pool size is the `initial_device_count`
 module option, and the vendor installer hardcodes it to 4
-(`/etc/modprobe.d/evdi.conf`). Upstream EVDI's own default is **0** — the 4 comes
-from the vendor, not from EVDI.
+(`/etc/modprobe.d/evdi.conf`). Upstream EVDI's own default is **0**, so the 4
+comes from the vendor, not from EVDI.
 
 ### How many you actually need
 
@@ -215,8 +215,8 @@ The benefits that are actually worth having:
   show up as permanently disconnected outputs and extra providers. Matching the
   pool to your hardware makes the display list mean what it says.
 - **Less to go wrong at session start.** Fewer DRM nodes means a smaller surface
-  for the compositor's primary-GPU selection — the class of problem this repo
-  exists to fix. Upstream ships a `softdep` option for exactly this reason: to
+  for the compositor's primary-GPU selection, which is the class of problem this
+  repo exists to fix. Upstream ships a `softdep` option for this same reason: to
   stop a compositor from treating `evdi` as the primary GPU.
 - **Honest defaults.** 4 is a vendor guess, not a measurement of your hardware.
 
@@ -231,8 +231,8 @@ adding devices on demand. On Wayland that constraint does not apply.
 
 `libevdi` creates a card on demand when it needs one and none is free: it writes
 to `/sys/devices/evdi/add` and retries. So an undersized pool self-heals on the
-next plug rather than failing. Match it to your adapter anyway — that is the
-point — but a wrong guess will not leave you without a screen.
+next plug rather than failing. Match it to your adapter anyway, since that is the
+whole point, but a wrong guess will not leave you without a screen.
 
 ## Reverting
 

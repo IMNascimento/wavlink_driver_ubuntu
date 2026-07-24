@@ -172,8 +172,8 @@ O `evdi` pré-cria um conjunto de dispositivos de tela virtual quando o módulo
 carrega, um `/dev/dri/cardN` para cada, e o daemon da tela USB pega um desse
 conjunto para cada monitor que você pluga. O tamanho do conjunto é a opção de
 módulo `initial_device_count`, e o instalador do fabricante fixa ela em 4
-(`/etc/modprobe.d/evdi.conf`). O padrão do próprio EVDI upstream é **0** — o 4
-vem do fabricante, não do EVDI.
+(`/etc/modprobe.d/evdi.conf`). O padrão do próprio EVDI upstream é **0**, ou
+seja, o 4 vem do fabricante e não do EVDI.
 
 ### Quantas você realmente precisa
 
@@ -217,7 +217,7 @@ Os benefícios que valem mesmo a pena:
   extras. Casar o conjunto com o seu hardware faz a lista de telas dizer a
   verdade.
 - **Menos coisa para dar errado no início da sessão.** Menos nós DRM significa
-  menos superfície para a escolha de GPU primária do compositor — exatamente a
+  menos superfície para a escolha de GPU primária do compositor, exatamente a
   classe de problema que este repositório existe para corrigir. O upstream traz
   uma opção `softdep` justamente por isso: impedir que um compositor trate o
   `evdi` como GPU primária.
@@ -237,8 +237,8 @@ demanda. No Wayland essa limitação não existe.
 A `libevdi` cria uma placa sob demanda quando precisa de uma e não há nenhuma
 livre: ela escreve em `/sys/devices/evdi/add` e tenta de novo. Ou seja, um
 conjunto pequeno demais se conserta sozinho no próximo plug em vez de falhar.
-Ainda assim, ajuste ao seu adaptador — é esse o objetivo — mas um chute errado
-não vai te deixar sem tela.
+Ainda assim, ajuste ao seu adaptador, porque é esse o objetivo. Mas um chute
+errado não vai te deixar sem tela.
 
 ## Reverter
 
