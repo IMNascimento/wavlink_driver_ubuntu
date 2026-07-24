@@ -3,6 +3,19 @@
 All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.2.0] - 2026-07-23
+
+### Added
+- `scripts/set-virtual-displays.sh` — sets how many virtual displays the `evdi`
+  module creates (`initial_device_count` in `/etc/modprobe.d/evdi.conf`). The
+  vendor default of 4 is unchanged unless the user runs the script. Supports
+  `--show` (no root), `--reset`, `--reload` to apply without replugging, and
+  `--dry-run`; backs the original config up once to
+  `/opt/siliconmotion/evdi-modprobe.conf.orig`.
+- README (EN + PT-BR): a "Choosing how many virtual displays" section explaining
+  that a monitor on the machine's own HDMI/DP port is driven by the real GPU and
+  does not consume a virtual display, so only the USB adapter's outputs count.
+
 ## [1.1.0] - 2026-07-23
 
 ### Added

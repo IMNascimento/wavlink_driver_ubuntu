@@ -159,6 +159,38 @@ Once installed, the display is fully automatic:
 Configure the external monitor (mirror / extend / resolution) in
 **Settings → Displays** as usual.
 
+## Choosing how many virtual displays
+
+The vendor driver always creates **4** virtual outputs
+(`options evdi initial_device_count=4` in `/etc/modprobe.d/evdi.conf`). Most
+adapters have fewer physical outputs than that, so the spares sit idle.
+
+You need **one virtual display per output on the USB adapter**. A monitor
+plugged straight into your machine's own HDMI or DisplayPort does **not** use
+one: it is driven by your real GPU and never goes through EVDI. A two-output
+adapter plus a direct-HDMI monitor therefore needs 2, not 4.
+
+```bash
+./scripts/set-virtual-displays.sh --show        # current setting, no root
+sudo ./scripts/set-virtual-displays.sh 2        # create 2 virtual displays
+sudo ./scripts/set-virtual-displays.sh --reset  # back to the vendor default (4)
+```
+
+| Flag | Effect |
+| --- | --- |
+| `--show` | Prints the configured count, the live count, and whether `evdi` is loaded. |
+| `--reload` | Applies immediately (stops the daemon, reloads `evdi`, restarts it) instead of waiting for the next plug. |
+| `--dry-run` | Prints every action, changes nothing. |
+| `--reset` | Restores the vendor default of 4. |
+
+Without `--reload` the new count takes effect the next time `evdi` loads, i.e.
+the next time you plug the adapter in. The original config is backed up once to
+`/opt/siliconmotion/evdi-modprobe.conf.orig`.
+
+The default stays at 4 so nothing changes for anyone who does not run this
+script. Lowering it is optional: fewer devices means a slightly lighter module
+load, not a functional difference.
+
 ## Reverting
 
 Full revert to the vendor-default state:
@@ -183,6 +215,7 @@ sudo systemctl mask smiusbdisplay.service
 | `third_party/evdi-1.15.0.tar.gz` | Bundled EVDI 1.15.0 source so Step 0 runs offline. |
 | `patches/evdi-open-attached-to-null-guard.patch` | The one-line NULL guard for `evdi_open_attached_to()`. |
 | `scripts/diagnose.sh` | Read-only system health check. |
+| `scripts/set-virtual-displays.sh` | Optional: sets how many virtual displays `evdi` creates (`initial_device_count`). Default stays 4. |
 | `install.sh` | Builds the patched libevdi from the vendor's `evdi.tar.gz`, backs up the original, installs it, disables the boot force-load, enables on-plug startup. |
 | `uninstall.sh` | Reverts everything to the vendor-default state. |
 

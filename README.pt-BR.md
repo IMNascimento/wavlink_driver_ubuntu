@@ -160,6 +160,38 @@ Depois de instalada, a tela é totalmente automática:
 Configure o monitor externo (espelhar / estender / resolução) em
 **Configurações → Telas**, como de costume.
 
+## Escolhendo quantas telas virtuais
+
+O driver do fabricante sempre cria **4** saídas virtuais
+(`options evdi initial_device_count=4` em `/etc/modprobe.d/evdi.conf`). A maioria
+dos adaptadores tem menos saídas físicas que isso, então as sobrando ficam ociosas.
+
+Você precisa de **uma tela virtual por saída do adaptador USB**. Um monitor
+ligado direto no HDMI ou DisplayPort da própria máquina **não** consome uma: ele
+é tocado pela GPU real e nunca passa pelo EVDI. Um adaptador de duas saídas mais
+um monitor no HDMI direto precisa, portanto, de 2 e não de 4.
+
+```bash
+./scripts/set-virtual-displays.sh --show        # configuração atual, sem root
+sudo ./scripts/set-virtual-displays.sh 2        # cria 2 telas virtuais
+sudo ./scripts/set-virtual-displays.sh --reset  # volta ao padrão do fabricante (4)
+```
+
+| Flag | Efeito |
+| --- | --- |
+| `--show` | Mostra o valor configurado, o valor em uso e se o `evdi` está carregado. |
+| `--reload` | Aplica na hora (para o daemon, recarrega o `evdi`, sobe de novo) em vez de esperar o próximo plug. |
+| `--dry-run` | Imprime todas as ações, não muda nada. |
+| `--reset` | Restaura o padrão do fabricante, 4. |
+
+Sem `--reload`, o novo valor passa a valer na próxima vez que o `evdi` carregar,
+ou seja, no próximo plug do adaptador. A configuração original é salva uma única
+vez em `/opt/siliconmotion/evdi-modprobe.conf.orig`.
+
+O padrão continua 4, então nada muda para quem não rodar este script. Reduzir é
+opcional: menos dispositivos significa uma carga de módulo um pouco mais leve,
+não uma diferença funcional.
+
 ## Reverter
 
 Reversão completa ao estado padrão do fabricante:
@@ -184,6 +216,7 @@ sudo systemctl mask smiusbdisplay.service
 | `third_party/evdi-1.15.0.tar.gz` | Source do EVDI 1.15.0 embutido para o Passo 0 rodar offline. |
 | `patches/evdi-open-attached-to-null-guard.patch` | O guard de `NULL` de uma linha para `evdi_open_attached_to()`. |
 | `scripts/diagnose.sh` | Checagem read-only do sistema. |
+| `scripts/set-virtual-displays.sh` | Opcional: define quantas telas virtuais o `evdi` cria (`initial_device_count`). O padrão continua 4. |
 | `install.sh` | Compila a libevdi corrigida a partir do `evdi.tar.gz` do fabricante, faz backup da original, instala, desativa o force-load no boot e habilita o start sob demanda. |
 | `uninstall.sh` | Reverte tudo ao estado padrão do fabricante. |
 
