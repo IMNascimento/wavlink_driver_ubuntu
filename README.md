@@ -159,37 +159,80 @@ Once installed, the display is fully automatic:
 Configure the external monitor (mirror / extend / resolution) in
 **Settings → Displays** as usual.
 
-## Choosing how many virtual displays
+## Tuning the number of virtual displays
 
-The vendor driver always creates **4** virtual outputs
-(`options evdi initial_device_count=4` in `/etc/modprobe.d/evdi.conf`). Most
-adapters have fewer physical outputs than that, so the spares sit idle.
+`scripts/set-virtual-displays.sh` controls how many virtual screens the `evdi`
+module creates. This is optional tuning, not part of the fix: skip it and
+everything still works.
 
-You need **one virtual display per output on the USB adapter**. A monitor
-plugged straight into your machine's own HDMI or DisplayPort does **not** use
-one: it is driven by your real GPU and never goes through EVDI. A two-output
-adapter plus a direct-HDMI monitor therefore needs 2, not 4.
+### What the setting is
+
+`evdi` pre-creates a pool of virtual display devices at module load time, one
+`/dev/dri/cardN` each, and the USB display daemon then claims one from that pool
+for every monitor you plug in. The pool size is the `initial_device_count`
+module option, and the vendor installer hardcodes it to 4
+(`/etc/modprobe.d/evdi.conf`). Upstream EVDI's own default is **0** — the 4 comes
+from the vendor, not from EVDI.
+
+### How many you actually need
+
+**One per physical output on the USB adapter.** A monitor plugged straight into
+your machine's own HDMI or DisplayPort does **not** use one: that output is
+driven by your real GPU and never goes through EVDI at all. So a two-output
+adapter plus a direct-HDMI monitor needs **2**, not 4, no matter how many screens
+are on your desk.
+
+### Usage
 
 ```bash
-./scripts/set-virtual-displays.sh --show        # current setting, no root
-sudo ./scripts/set-virtual-displays.sh 2        # create 2 virtual displays
+./scripts/set-virtual-displays.sh --show        # current setting, no root needed
+sudo ./scripts/set-virtual-displays.sh 2        # pool of 2 virtual displays
 sudo ./scripts/set-virtual-displays.sh --reset  # back to the vendor default (4)
 ```
 
 | Flag | Effect |
 | --- | --- |
-| `--show` | Prints the configured count, the live count, and whether `evdi` is loaded. |
-| `--reload` | Applies immediately (stops the daemon, reloads `evdi`, restarts it) instead of waiting for the next plug. |
+| `--show` | Prints the configured count, the live count, and whether `evdi` is loaded. No root. |
+| `--reload` | Applies immediately: stops the daemon, reloads `evdi`, restarts it. Without it, the new count applies on the next plug. |
 | `--dry-run` | Prints every action, changes nothing. |
 | `--reset` | Restores the vendor default of 4. |
 
-Without `--reload` the new count takes effect the next time `evdi` loads, i.e.
-the next time you plug the adapter in. The original config is backed up once to
-`/opt/siliconmotion/evdi-modprobe.conf.orig`.
+The original config is backed up once to
+`/opt/siliconmotion/evdi-modprobe.conf.orig`, and `uninstall.sh` puts it back.
 
-The default stays at 4 so nothing changes for anyone who does not run this
-script. Lowering it is optional: fewer devices means a slightly lighter module
-load, not a functional difference.
+### Why lowering it helps
+
+Be realistic about the size of the win. Each unused device is a kernel DRM
+device with a connector, encoder, CRTC and a few small buffers; **no framebuffer
+is allocated until a display actually connects**, so two idle devices cost
+kilobytes, not megabytes. Dropping 4 to 2 is not going to show up in your RAM
+graph.
+
+The benefits that are actually worth having:
+
+- **A cleaner display setup.** Every device in the pool is a real DRM node that
+  X11, Xwayland, GNOME Settings and `xrandr` enumerate and probe. Unused ones
+  show up as permanently disconnected outputs and extra providers. Matching the
+  pool to your hardware makes the display list mean what it says.
+- **Less to go wrong at session start.** Fewer DRM nodes means a smaller surface
+  for the compositor's primary-GPU selection — the class of problem this repo
+  exists to fix. Upstream ships a `softdep` option for exactly this reason: to
+  stop a compositor from treating `evdi` as the primary GPU.
+- **Honest defaults.** 4 is a vendor guess, not a measurement of your hardware.
+
+### Why the vendor picked 4 in the first place
+
+Upstream documents `initial_device_count` as a **workaround for X.Org**: the X
+server builds its list of GPU providers once at startup and can crash when a GPU
+device appears later, so DisplayLink-style drivers pre-create a pool instead of
+adding devices on demand. On Wayland that constraint does not apply.
+
+### Setting it too low is safe
+
+`libevdi` creates a card on demand when it needs one and none is free: it writes
+to `/sys/devices/evdi/add` and retries. So an undersized pool self-heals on the
+next plug rather than failing. Match it to your adapter anyway — that is the
+point — but a wrong guess will not leave you without a screen.
 
 ## Reverting
 

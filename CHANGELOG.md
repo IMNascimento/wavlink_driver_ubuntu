@@ -12,9 +12,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
   `--show` (no root), `--reset`, `--reload` to apply without replugging, and
   `--dry-run`; backs the original config up once to
   `/opt/siliconmotion/evdi-modprobe.conf.orig`.
-- README (EN + PT-BR): a "Choosing how many virtual displays" section explaining
-  that a monitor on the machine's own HDMI/DP port is driven by the real GPU and
-  does not consume a virtual display, so only the USB adapter's outputs count.
+- README (EN + PT-BR): a "Tuning the number of virtual displays" section covering
+  what `initial_device_count` is, how many devices a given setup needs (a monitor
+  on the machine's own HDMI/DP port is driven by the real GPU and consumes none),
+  what lowering it does and does not save, why the vendor ships 4 (an upstream
+  X.Org workaround that Wayland does not need), and why an undersized pool is
+  safe (libevdi creates a card on demand via `/sys/devices/evdi/add`).
 
 ## [1.1.0] - 2026-07-23
 

@@ -160,37 +160,85 @@ Depois de instalada, a tela é totalmente automática:
 Configure o monitor externo (espelhar / estender / resolução) em
 **Configurações → Telas**, como de costume.
 
-## Escolhendo quantas telas virtuais
+## Ajustando o número de telas virtuais
 
-O driver do fabricante sempre cria **4** saídas virtuais
-(`options evdi initial_device_count=4` em `/etc/modprobe.d/evdi.conf`). A maioria
-dos adaptadores tem menos saídas físicas que isso, então as sobrando ficam ociosas.
+O `scripts/set-virtual-displays.sh` controla quantas telas virtuais o módulo
+`evdi` cria. É um ajuste opcional, não faz parte da correção: pule ele e tudo
+continua funcionando.
 
-Você precisa de **uma tela virtual por saída do adaptador USB**. Um monitor
-ligado direto no HDMI ou DisplayPort da própria máquina **não** consome uma: ele
-é tocado pela GPU real e nunca passa pelo EVDI. Um adaptador de duas saídas mais
-um monitor no HDMI direto precisa, portanto, de 2 e não de 4.
+### O que é essa configuração
+
+O `evdi` pré-cria um conjunto de dispositivos de tela virtual quando o módulo
+carrega, um `/dev/dri/cardN` para cada, e o daemon da tela USB pega um desse
+conjunto para cada monitor que você pluga. O tamanho do conjunto é a opção de
+módulo `initial_device_count`, e o instalador do fabricante fixa ela em 4
+(`/etc/modprobe.d/evdi.conf`). O padrão do próprio EVDI upstream é **0** — o 4
+vem do fabricante, não do EVDI.
+
+### Quantas você realmente precisa
+
+**Uma por saída física do adaptador USB.** Um monitor ligado direto no HDMI ou
+DisplayPort da própria máquina **não** consome nenhuma: essa saída é tocada pela
+sua GPU real e nunca passa pelo EVDI. Então um adaptador de duas saídas mais um
+monitor no HDMI direto precisa de **2**, não de 4, por mais telas que tenham na
+sua mesa.
+
+### Uso
 
 ```bash
 ./scripts/set-virtual-displays.sh --show        # configuração atual, sem root
-sudo ./scripts/set-virtual-displays.sh 2        # cria 2 telas virtuais
+sudo ./scripts/set-virtual-displays.sh 2        # conjunto de 2 telas virtuais
 sudo ./scripts/set-virtual-displays.sh --reset  # volta ao padrão do fabricante (4)
 ```
 
 | Flag | Efeito |
 | --- | --- |
-| `--show` | Mostra o valor configurado, o valor em uso e se o `evdi` está carregado. |
-| `--reload` | Aplica na hora (para o daemon, recarrega o `evdi`, sobe de novo) em vez de esperar o próximo plug. |
+| `--show` | Mostra o valor configurado, o valor em uso e se o `evdi` está carregado. Sem root. |
+| `--reload` | Aplica na hora: para o daemon, recarrega o `evdi`, sobe de novo. Sem ela, o novo valor vale no próximo plug. |
 | `--dry-run` | Imprime todas as ações, não muda nada. |
 | `--reset` | Restaura o padrão do fabricante, 4. |
 
-Sem `--reload`, o novo valor passa a valer na próxima vez que o `evdi` carregar,
-ou seja, no próximo plug do adaptador. A configuração original é salva uma única
-vez em `/opt/siliconmotion/evdi-modprobe.conf.orig`.
+A configuração original é salva uma única vez em
+`/opt/siliconmotion/evdi-modprobe.conf.orig`, e o `uninstall.sh` devolve ela.
 
-O padrão continua 4, então nada muda para quem não rodar este script. Reduzir é
-opcional: menos dispositivos significa uma carga de módulo um pouco mais leve,
-não uma diferença funcional.
+### Por que reduzir ajuda
+
+Seja realista sobre o tamanho do ganho. Cada dispositivo ocioso é um device DRM
+do kernel com connector, encoder, CRTC e alguns buffers pequenos; **nenhum
+framebuffer é alocado enquanto uma tela não conecta de verdade**, então dois
+dispositivos parados custam kilobytes, não megabytes. Passar de 4 para 2 não vai
+aparecer no seu gráfico de RAM.
+
+Os benefícios que valem mesmo a pena:
+
+- **Configuração de telas mais limpa.** Todo dispositivo do conjunto é um nó DRM
+  real que X11, Xwayland, Configurações do GNOME e `xrandr` enumeram e sondam. Os
+  não usados aparecem como saídas permanentemente desconectadas e providers
+  extras. Casar o conjunto com o seu hardware faz a lista de telas dizer a
+  verdade.
+- **Menos coisa para dar errado no início da sessão.** Menos nós DRM significa
+  menos superfície para a escolha de GPU primária do compositor — exatamente a
+  classe de problema que este repositório existe para corrigir. O upstream traz
+  uma opção `softdep` justamente por isso: impedir que um compositor trate o
+  `evdi` como GPU primária.
+- **Padrões honestos.** 4 é um chute do fabricante, não uma medição do seu
+  hardware.
+
+### Por que o fabricante escolheu 4
+
+O upstream documenta o `initial_device_count` como um **workaround para o
+X.Org**: o servidor X monta a lista de providers de GPU uma vez, no início, e
+pode quebrar quando um dispositivo de GPU aparece depois. Por isso drivers no
+estilo DisplayLink pré-criam um conjunto em vez de adicionar dispositivos sob
+demanda. No Wayland essa limitação não existe.
+
+### Configurar um valor baixo demais é seguro
+
+A `libevdi` cria uma placa sob demanda quando precisa de uma e não há nenhuma
+livre: ela escreve em `/sys/devices/evdi/add` e tenta de novo. Ou seja, um
+conjunto pequeno demais se conserta sozinho no próximo plug em vez de falhar.
+Ainda assim, ajuste ao seu adaptador — é esse o objetivo — mas um chute errado
+não vai te deixar sem tela.
 
 ## Reverter
 
