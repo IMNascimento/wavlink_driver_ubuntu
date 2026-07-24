@@ -17,6 +17,8 @@ set -euo pipefail
 SMI_DIR="/opt/siliconmotion"
 BOOT_LOAD="/etc/modules-load.d/evdi.conf"
 DISABLED="$SMI_DIR/modules-load-evdi.conf.disabled"
+MODPROBE_CONF="/etc/modprobe.d/evdi.conf"
+MODPROBE_BAK="$SMI_DIR/evdi-modprobe.conf.orig"
 MODE="revert"
 
 for arg in "$@"; do
@@ -50,6 +52,14 @@ if [ -f "$DISABLED" ]; then
   run "mv '$DISABLED' '$BOOT_LOAD'"
 else
   echo "  no disabled boot-load backup found — leaving boot config as-is."
+fi
+
+say "Restoring the vendor virtual-display count"
+if [ -f "$MODPROBE_BAK" ]; then
+  run "cp -a '$MODPROBE_BAK' '$MODPROBE_CONF'"
+  run "rm -f '$MODPROBE_BAK'"
+else
+  echo "  no modprobe backup found — set-virtual-displays.sh was never used."
 fi
 
 say "Reloading systemd and udev"
