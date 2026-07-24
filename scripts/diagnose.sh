@@ -66,6 +66,10 @@ if [ -f /etc/modules-load.d/evdi.conf ]; then
 else
   ok "evdi is not force-loaded at boot."
 fi
+if [ -f /etc/modprobe.d/evdi.conf ]; then
+  vcount="$(sed -n 's/.*initial_device_count=\([0-9]\+\).*/\1/p' /etc/modprobe.d/evdi.conf | tail -n1)"
+  info "Virtual displays configured: ${vcount:-module default} (change with scripts/set-virtual-displays.sh)."
+fi
 if systemctl is-enabled smiusbdisplay.service >/dev/null 2>&1; then
   state="$(systemctl is-enabled smiusbdisplay.service 2>/dev/null)"
   if [ "$state" = "masked" ]; then

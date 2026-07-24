@@ -3,6 +3,22 @@
 All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.2.0] - 2026-07-23
+
+### Added
+- `scripts/set-virtual-displays.sh` — sets how many virtual displays the `evdi`
+  module creates (`initial_device_count` in `/etc/modprobe.d/evdi.conf`). The
+  vendor default of 4 is unchanged unless the user runs the script. Supports
+  `--show` (no root), `--reset`, `--reload` to apply without replugging, and
+  `--dry-run`; backs the original config up once to
+  `/opt/siliconmotion/evdi-modprobe.conf.orig`.
+- README (EN + PT-BR): a "Tuning the number of virtual displays" section covering
+  what `initial_device_count` is, how many devices a given setup needs (a monitor
+  on the machine's own HDMI/DP port is driven by the real GPU and consumes none),
+  what lowering it does and does not save, why the vendor ships 4 (an upstream
+  X.Org workaround that Wayland does not need), and why an undersized pool is
+  safe (libevdi creates a card on demand via `/sys/devices/evdi/add`).
+
 ## [1.1.0] - 2026-07-23
 
 ### Added
